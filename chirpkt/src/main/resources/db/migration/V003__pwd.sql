@@ -1,0 +1,3 @@
+ALTER TABLE Users ADD COLUMN pass TEXT NOT NULL DEFAULT '';
+
+UPDATE Users SET pass='';

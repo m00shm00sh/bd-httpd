@@ -1,0 +1,14 @@
+CREATE TABLE Refresh_tokens (
+	token VARCHAR PRIMARY KEY,
+	created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+	updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+	user_id UUID REFERENCES Users(id) ON DELETE CASCADE,
+	expires_at TIMESTAMP NOT NULL,
+	revoked_at TIMESTAMP
+);
+
+CREATE TRIGGER refreshes_set_mtime AFTER UPDATE ON Refresh_tokens
+FOR EACH ROW WHEN NEW.updated_at IS NULL
+BEGIN
+    UPDATE Refresh_tokens SET updated_at = CURRENT_TIMESTAMP WHERE updated_at IS NULL;
+END;
