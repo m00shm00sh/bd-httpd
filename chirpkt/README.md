@@ -1,7 +1,5 @@
 # chirpkt, a Kotlin version of the Bootdev HTTP server
 
-NOTE: there is insufficient testing to automatically verify the application flow behaves as desired. this will be addressed in a future commit
-
 This project was created using the [Ktor Project Generator](https://start.ktor.io).
 
 Here are some useful links to get you started:
