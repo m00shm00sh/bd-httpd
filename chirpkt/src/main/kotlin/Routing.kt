@@ -16,7 +16,12 @@ import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.server.resources.*
 import io.ktor.server.resources.handle
-import io.ktor.server.routing.*
+import io.ktor.server.routing.Route
+import io.ktor.server.routing.RoutingContext
+import io.ktor.server.routing.get
+import io.ktor.server.routing.post
+import io.ktor.server.routing.route
+import io.ktor.server.routing.routing
 import kotlinx.html.body
 import kotlinx.html.h1
 import kotlinx.html.p
@@ -90,25 +95,3 @@ internal fun Application.configureRouting(
 }
 
 internal class AuthenticationFailure(s: String): RuntimeException(s)
-
-internal inline fun <reified RoutingResource: Any, reified Body: Any, reified Response: Any>
-Route.endpoint(
-    method: HttpMethod,
-    noinline body: suspend RoutingContext.(RoutingResource, Body) -> Response
-): Route {
-    lateinit var route: Route
-    resource<RoutingResource> {
-        route = method(method) {
-            val serializer = serializer<RoutingResource>()
-            handle(serializer) { resource ->
-                val input = if (Body::class == Unit::class) Unit as Body else call.receive()
-                val result = body(resource, input)
-                if (Response::class == Unit::class)
-                    call.respondText("", status = HttpStatusCode.NoContent)
-                else
-                    call.respond(result)
-            }
-        }
-    }
-    return route
-}

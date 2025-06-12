@@ -1,7 +1,8 @@
 package chirp
 
 import AuthenticationFailure
-import endpoint
+import delete
+import get
 import io.ktor.client.request.HttpRequest
 import io.ktor.client.statement.HttpResponse
 import io.ktor.http.HttpMethod
@@ -12,6 +13,7 @@ import io.ktor.server.response.respond
 import io.ktor.server.routing.Route
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import post
 import tokens.JwtService
 import user.UserRequest
 import user.UserResponseWithToken
@@ -38,7 +40,7 @@ internal class ChirpRoute(
 internal fun Route.chirpRoutes(chirpService: ChirpService, tokenService: JwtService) {
     authenticate("access") {
         // create chirp
-        endpoint<ChirpRoute, ChirpRequest, ChirpResponse>(HttpMethod.Post) { _, req ->
+        post<ChirpRoute, ChirpRequest, ChirpResponse> { _, req ->
             val user = JwtService.getUser(call)
             checkNotNull(user)
             call.response.status(HttpStatusCode.Created)
@@ -47,11 +49,11 @@ internal fun Route.chirpRoutes(chirpService: ChirpService, tokenService: JwtServ
     }
 
     // get all chirps
-    endpoint<ChirpRoute, Unit, List<ChirpResponse>>(HttpMethod.Get) { res, _ ->
+    get<ChirpRoute, List<ChirpResponse>>{ res ->
         val aid = res.authorId
         val sort = res.sort ?: "asc"
         val chirps = chirpService.getChirps(aid)
-        return@endpoint (
+        return@get (
             if (sort == "desc")
                 chirps.reversed()
             else
@@ -63,18 +65,19 @@ internal fun Route.chirpRoutes(chirpService: ChirpService, tokenService: JwtServ
         chirpService.getChirpById(id) ?: throw NoSuchElementException("no such chirp")
 
     // get one chirp
-    endpoint<ChirpRoute.ById, Unit, ChirpResponse>(HttpMethod.Get) { res, _ ->
+    get<ChirpRoute.ById, ChirpResponse> { res ->
         getChirpByIdOrThrow404(res.id)
     }
 
     authenticate("access") {
         // delete one chirp
-        endpoint<ChirpRoute.ById, Unit, Unit>(HttpMethod.Delete) { res, _ ->
+        delete<ChirpRoute.ById, _> { res ->
             val user = JwtService.getUser(call)
             val chirp = getChirpByIdOrThrow404(res.id)
             if (chirp.userId != user)
                 throw UnsupportedOperationException("can't delete someone else's chirp")
             chirpService.deleteChirp(chirp.id)
+            return@delete HttpStatusCode.NoContent
         }
     }
 

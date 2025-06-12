@@ -1,13 +1,14 @@
 package webhook
 
 import AuthenticationFailure
-import endpoint
 import io.ktor.http.*
+import io.ktor.http.content.OutgoingContent
 import io.ktor.resources.Resource
 import io.ktor.server.application.*
 import io.ktor.server.auth.*
 import io.ktor.server.response.respond
 import io.ktor.server.routing.Route
+import post
 import user.UserService
 
 @Resource("/polka")
@@ -86,11 +87,12 @@ internal fun AuthenticationConfig.configurePolkaAuth(polka: AppConfig.Polka) {
 
 internal fun Route.polkaWebhook(userService: UserService) {
     authenticate("ApiKey") {
-        endpoint<PolkaRoute.Webhooks, PolkaRequest, _>(HttpMethod.Post) { _, req ->
-            if (req.event != "user.upgraded")
-                return@endpoint
-            if (!userService.upgradeUser(req.data.userId))
+        post<PolkaRoute.Webhooks, PolkaRequest, _> { _, req ->
+            if (req.event == "user.upgraded" &&
+                !userService.upgradeUser(req.data.userId)
+            )
                 throw NoSuchElementException()
+            return@post HttpStatusCode.NoContent
         }
     }
 }
