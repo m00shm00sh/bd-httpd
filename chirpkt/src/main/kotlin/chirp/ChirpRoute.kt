@@ -8,6 +8,7 @@ import io.ktor.http.HttpMethod
 import io.ktor.http.HttpStatusCode
 import io.ktor.resources.Resource
 import io.ktor.server.auth.authenticate
+import io.ktor.server.response.respond
 import io.ktor.server.routing.Route
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -35,11 +36,12 @@ internal class ChirpRoute(
 }
 
 internal fun Route.chirpRoutes(chirpService: ChirpService, tokenService: JwtService) {
-    authenticate {
+    authenticate("access") {
         // create chirp
         endpoint<ChirpRoute, ChirpRequest, ChirpResponse>(HttpMethod.Post) { _, req ->
             val user = JwtService.getUser(call)
             checkNotNull(user)
+            call.response.status(HttpStatusCode.Created)
             chirpService.createChirp(req, user)
         }
     }
@@ -65,7 +67,7 @@ internal fun Route.chirpRoutes(chirpService: ChirpService, tokenService: JwtServ
         getChirpByIdOrThrow404(res.id)
     }
 
-    authenticate {
+    authenticate("access") {
         // delete one chirp
         endpoint<ChirpRoute.ById, Unit, Unit>(HttpMethod.Delete) { res, _ ->
             val user = JwtService.getUser(call)

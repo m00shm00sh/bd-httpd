@@ -49,7 +49,7 @@ internal fun Application.configureRouting(
     install(Resources)
 
     routing {
-        route("/api") {
+        route("api") {
             userRoutes(userService, refreshService, jwtService)
             chirpRoutes(chirpService, jwtService)
             refreshRoutes(refreshService, jwtService)
@@ -58,7 +58,7 @@ internal fun Application.configureRouting(
                 call.respondText("OK")
             }
         }
-        route("/admin") {
+        route("admin") {
             get("metrics") {
                 call.respondHtml {
                     body {
@@ -75,7 +75,8 @@ internal fun Application.configureRouting(
                 if (!isDev)
                     throw UnsupportedOperationException()
                 userService.deleteAllUsers()
-                call.respondText("")
+                hitCount.set(0)
+                call.respondText("", status = HttpStatusCode.OK)
             }
         }
         // Static plugin. Try to access `/static/index.html`

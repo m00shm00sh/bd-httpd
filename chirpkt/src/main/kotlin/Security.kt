@@ -10,7 +10,7 @@ import webhook.configurePolkaAuth
 
 internal fun Application.configureSecurity(userService: UserService, jwtService: JwtService, polka: AppConfig.Polka) {
     authentication {
-        jwt {
+        jwt("access") {
             verifier(jwtService.verifier)
             validate { credential ->
                 jwtService.validator(credential, userService)

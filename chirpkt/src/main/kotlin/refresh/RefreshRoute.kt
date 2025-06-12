@@ -24,7 +24,7 @@ private class RefreshPrincipal(val token: String)
 internal fun AuthenticationConfig.configureBearerRefresh() {
     bearer("refresh-token") {
         authenticate {
-            val id = RefreshPrincipal(it.token)
+            RefreshPrincipal(it.token)
         }
     }
 }
@@ -33,8 +33,8 @@ internal fun Route.refreshRoutes(refreshService: RefreshService, tokenService: J
     authenticate("refresh-token") {
         // login via refresh
         endpoint<RefreshRoute, Unit, RefreshResponse>(HttpMethod.Post) { _, _ ->
-            val token = call.principal<RefreshPrincipal>("refresh-token")?.token
-            checkNotNull(token)
+            val token = call.principal<RefreshPrincipal>()?.token
+                ?: throw AuthenticationFailure("")
             // this is done here instead of in authentication handler to avoid needless GET in revoke
             val user = refreshService.getUserByRefresh(token)
             if (user == null)
@@ -44,8 +44,8 @@ internal fun Route.refreshRoutes(refreshService: RefreshService, tokenService: J
         }
         // revoke
         endpoint<RevokeRoute, Unit, Unit>(HttpMethod.Post) { _, _ ->
-            val token = call.principal<RefreshPrincipal>("refresh-token")?.token
-            checkNotNull(token)
+            val token = call.principal<RefreshPrincipal>()?.token
+                ?: throw AuthenticationFailure("")
             refreshService.revokeToken(token)
         }
     }

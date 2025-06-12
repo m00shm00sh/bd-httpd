@@ -6,6 +6,7 @@ import refresh.RefreshService
 import tokens.JwtService
 
 import io.ktor.http.HttpMethod
+import io.ktor.http.HttpStatusCode
 import io.ktor.resources.Resource
 import io.ktor.server.auth.authenticate
 import io.ktor.server.routing.Route
@@ -19,11 +20,10 @@ internal class LoginRoute {
 
 internal fun Route.userRoutes(userService: UserService, refreshService: RefreshService, tokenService: JwtService) {
     // create user
-    endpoint<UserRoute, UserRequest, UserResponseWithToken>(HttpMethod.Post) { _, req ->
+    endpoint<UserRoute, UserRequest, UserResponse>(HttpMethod.Post) { _, req ->
         val result = userService.createUser(req.toUserEntry())
-        val refreshToken = refreshService.createRefreshTokenForUser(result.id!!)
-        val accessToken = tokenService.createToken(result.id)
-        result.withTokens(refreshToken, accessToken)
+        call.response.status(HttpStatusCode.Created)
+        result
     }
     // login user
     endpoint<LoginRoute, UserRequest, UserResponseWithToken>(HttpMethod.Post) { _, req ->
@@ -33,19 +33,15 @@ internal fun Route.userRoutes(userService: UserService, refreshService: RefreshS
             throw AuthenticationFailure("bad login")
         val refreshToken = refreshService.createRefreshTokenForUser(userResp.id!!)
         val accessToken = tokenService.createToken(userResp.id)
-        userResp.withTokens(refreshToken, accessToken)
+        userResp.withTokens(accessToken, refreshToken)
     }
-    authenticate {
+    authenticate("access") {
         // update user
-        endpoint<UserRoute, UserRequest, UserResponseWithToken>(HttpMethod.Put) { _, req ->
+        endpoint<UserRoute, UserRequest, UserResponse>(HttpMethod.Put) { _, req ->
             val user = JwtService.getUser(call) ?: throw AuthenticationFailure("")
             val result = userService.updateUser(req.toUserEntry(), user)
                 ?: throw NoSuchElementException("no user")
-            val refreshToken = refreshService.createRefreshTokenForUser(user)
-            val accessToken = tokenService.createToken(user)
-            result
-                .copy(id = user, email = req.email,)
-                .withTokens(accessToken, refreshToken)
+            result.copy(id = user, email = req.email,)
         }
     }
 

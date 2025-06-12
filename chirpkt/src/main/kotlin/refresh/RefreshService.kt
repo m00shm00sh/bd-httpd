@@ -30,7 +30,9 @@ internal class RefreshService(private val db: Database) {
             withDsl {
                 val exp = Clock.System.now()
                 select(REFRESH_TOKENS.USER_ID)
+                    .from(REFRESH_TOKENS)
                     .where(REFRESH_TOKENS.TOKEN.eq(refresh)
+                        .and(REFRESH_TOKENS.REVOKED_AT.isNull)
                         .and(REFRESH_TOKENS.EXPIRES_AT.greaterThan(exp.toLocalDateTime(TimeZone.UTC).toJavaLocalDateTime())
                         ))
             }.suspendedBlockingFetch {

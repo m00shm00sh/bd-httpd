@@ -71,17 +71,22 @@ internal class UserService(private val db: Database) {
 
     suspend fun updateUser(newDetails: UserEntry, userId: UUID): UserResponse? =
         db.op {
+            // For SQLite, need to do update then select for the post-insert trigger to replace values correctly
+            val (q1, q2) =
             withDsl {
-                update(USERS)
+                val q1 = update(USERS)
                     .set(USERS.EMAIL, newDetails.email)
                     .set(USERS.PASS, newDetails.password.value)
                     .set(USERS.UPDATED_AT, null as java.time.LocalDateTime?) // to be filled by trigger
                     .where(USERS.ID.eq(userId))
-                    .returningResult(
-                            USERS.CREATED_AT, USERS.UPDATED_AT,
-                            USERS.IS_CHIRPY_RED
-                    )
-            }.suspendedBlockingFetch {
+                val q2 = select(USERS.CREATED_AT, USERS.UPDATED_AT, USERS.IS_CHIRPY_RED)
+                        .from(USERS)
+                        .where(USERS.ID.eq(userId))
+                q1 to q2
+            }
+            if (!q1.suspendedBlockingIO { execute() == 1 })
+                return@op null
+            q2.suspendedBlockingFetch {
                 fetchOne()?.let { (created, updated, red) ->
                     checkNotNull(created)
                     checkNotNull(updated)
