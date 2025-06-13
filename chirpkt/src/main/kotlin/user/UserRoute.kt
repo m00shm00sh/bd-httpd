@@ -11,12 +11,11 @@ import io.ktor.resources.Resource
 import io.ktor.server.auth.authenticate
 import io.ktor.server.routing.Route
 
-@Resource("/users")
-internal class UserRoute {
-}
-@Resource("/login")
-internal class LoginRoute {
-}
+@Resource("users")
+internal class UserRoute
+
+@Resource("login")
+internal class LoginRoute
 
 internal fun Route.userRoutes(userService: UserService, refreshService: RefreshService, tokenService: JwtService) {
     // create user

@@ -22,7 +22,7 @@ import user.toUserEntry
 import user.withTokens
 import java.util.UUID
 
-@Resource("/chirps")
+@Resource("chirps")
 internal class ChirpRoute(
     val sort: String? = "asc",
     @SerialName("author_id")

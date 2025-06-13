@@ -17,9 +17,9 @@ import io.ktor.server.resources.post
 import io.ktor.server.routing.Route
 import tokens.JwtService
 
-@Resource("/refresh")
+@Resource("refresh")
 internal class RefreshRoute()
-@Resource("/revoke")
+@Resource("revoke")
 internal class RevokeRoute
 
 private class RefreshPrincipal(val token: String)

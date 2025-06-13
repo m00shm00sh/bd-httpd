@@ -11,9 +11,9 @@ import io.ktor.server.routing.Route
 import post
 import user.UserService
 
-@Resource("/polka")
+@Resource("polka")
 internal class PolkaRoute {
-    @Resource("/webhooks")
+    @Resource("webhooks")
     internal class Webhooks(val parent: PolkaRoute = PolkaRoute())
 }
 
