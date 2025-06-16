@@ -33,7 +33,6 @@ func main() {
 	}
 	dbQueries := database.New(dbConn)
 
-	sm := http.NewServeMux()
 	ac := apiConf{
 		hits:            atomic.Int32{},
 		db:              dbQueries,
@@ -44,23 +43,8 @@ func main() {
 		jwtSecret:       jwtSecret,
 		passwordEncoder: bcryptEncoder{},
 	}
-	handle := func(pat string, h http.Handler) {
-		sm.Handle(pat, ac.withLog(h))
-	}
-	handle("/app/", ac.serveStatic())
-	handle("GET /api/healthz", ac.healthz())
-	handle("POST /api/users", ac.registerUser())
-	handle("PUT /api/users", ac.modifyUser())
-	handle("POST /api/login", ac.loginUser())
-	handle("POST /api/refresh", ac.refresh())
-	handle("POST /api/revoke", ac.revoke())
-	handle("POST /api/polka/webhooks", ac.polkaWebhook())
-	handle("POST /api/chirps", ac.postChirp())
-	handle("GET /api/chirps", ac.getAllChirps())
-	handle("GET /api/chirps/{cid}", ac.getOneChirp())
-	handle("DELETE /api/chirps/{cid}", ac.deleteChirp())
-	handle("GET /admin/metrics", ac.metrics())
-	handle("POST /admin/reset", ac.resetDb())
-	s := http.Server{Handler: sm, Addr: ":8080"}
+
+	mux := ac.configureRoutes()
+	s := http.Server{Handler: mux, Addr: ":8080"}
 	s.ListenAndServe()
 }
