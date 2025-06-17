@@ -1,10 +1,10 @@
 
 import chirp.ChirpRequest
 import chirp.ChirpResponse
-import io.ktor.client.call.body
+import util.Method
+import util.testEndpoint
 import io.ktor.client.request.*
-import io.ktor.client.statement.bodyAsText
-import io.ktor.http.*
+import io.ktor.http.HttpStatusCode
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertTrue
 import refresh.RefreshResponse
@@ -21,411 +21,259 @@ class ApplicationTest {
 
     @Test
     fun testStaticAndMisc() = withServer {
-        post("/admin/reset").apply {
-            assertEquals(HttpStatusCode.OK, status)
-        }
+        testEndpoint<Unit, Unit>(Method.PostJson, "/admin/reset")
 
         /* static */
-        get("/app/").apply {
-            assertEquals(HttpStatusCode.OK, status)
-            assertTrue(bodyAsText().contains("Welcome to Chirpy"))
-
+        testEndpoint<Unit, String>(Method.Get, "/app/") {
+            assertTrue(contains("Welcome to Chirpy"))
         }
-        get("/app/assets/logo.png").apply {
-            assertEquals(HttpStatusCode.OK, status)
-        }
+        testEndpoint<Unit, Unit>(Method.Get, "/app/assets/logo.png")
 
         /* misc */
-        get("/admin/metrics").apply {
-            assertEquals(HttpStatusCode.OK, status)
-            assertTrue(bodyAsText().contains("has been visited 2"))
+        testEndpoint<Unit, String>(Method.Get, "/admin/metrics") {
+            assertTrue(contains("has been visited 2"))
         }
-        get("/api/healthz").apply {
-            assertEquals(HttpStatusCode.OK, status)
-            assertEquals("OK", bodyAsText())
+        testEndpoint<Unit, String>(Method.Get, "/api/healthz") {
+            assertEquals("OK", this)
         }
     }
 
     @Test
     fun testWebhooks() = withServer { c ->
-        post("/admin/reset").apply {
-            assertEquals(HttpStatusCode.OK, status)
-        }
+        testEndpoint<Unit, Unit>(Method.Post, "/admin/reset")
 
         lateinit var saulID: UUID
         /* user crud - create */
-        post("/api/users") {
-            contentType(ContentType.Application.Json)
-            setBody(
-                UserRequest("saul@bettercall.com", "123456")
-            )
-        }.apply {
-            assertEquals(HttpStatusCode.Created, status)
-            val response = body<UserResponse>()
-            assertEquals("saul@bettercall.com", response.email)
-            assertFalse(response.isRed)
-            saulID = response.id!!
+        testEndpoint<UserRequest, UserResponse>(Method.PostJson, "/api/users",
+            reqBody = UserRequest("saul@bettercall.com", "123456"),
+            responseCode = HttpStatusCode.Created
+        ) {
+            assertEquals("saul@bettercall.com", email)
+            assertFalse(isRed)
+            saulID = id!!
         }
 
         /* webhooks */
-        post("/api/polka/webhooks") {
-            contentType(ContentType.Application.Json)
-            setBody(
-                PolkaRequest("user.upgraded", PolkaRequest.PolkaData(saulID))
-            )
-        }.apply {
-            assertEquals(HttpStatusCode.Unauthorized, status)
-        }
-        post("/api/polka/webhooks") {
-            contentType(ContentType.Application.Json)
-            header("Authorization", "ApiKey ${c.polka.key}")
-            setBody(
-                PolkaRequest("user.upgraded", PolkaRequest.PolkaData(saulID))
-            )
-        }.apply {
-            assertEquals(HttpStatusCode.NoContent, status)
-        }
-        post("/api/login") {
-            contentType(ContentType.Application.Json)
-            setBody(
-                UserRequest("saul@bettercall.com", "123456")
-            )
-        }.apply {
-            assertEquals(HttpStatusCode.OK, status)
-            val response = body<UserResponseWithToken>()
-            assertTrue(response.isRed)
+        testEndpoint<PolkaRequest, Unit>(Method.PostJson, "/api/polka/webhooks",
+            reqBody = PolkaRequest("user.upgraded", PolkaRequest.PolkaData(saulID)),
+            responseCode = HttpStatusCode.Unauthorized
+        )
+        testEndpoint<PolkaRequest, Unit>(Method.PostJson, "/api/polka/webhooks",
+            { header("Authorization", "ApiKey ${c.polka.key}") },
+            PolkaRequest("user.upgraded", PolkaRequest.PolkaData(saulID)),
+            responseCode = HttpStatusCode.NoContent
+        )
+        testEndpoint<UserRequest, UserResponseWithToken>(Method.PostJson, "/api/login",
+            reqBody = UserRequest("saul@bettercall.com", "123456")
+        ) {
+            assertTrue(isRed)
         }
     }
 
     @Test
     fun testRefreshToken() = withServer { c ->
+        testEndpoint<Unit, Unit>(Method.Post, "/admin/reset")
+
         lateinit var saulAccessToken: String
         lateinit var saulRefreshToken: String
-        post("/admin/reset").apply {
-            assertEquals(HttpStatusCode.OK, status)
+        testEndpoint<UserRequest, UserResponse>(Method.PostJson, "/api/users",
+            reqBody = UserRequest("saul@bettercall.com", "123456"),
+            responseCode = HttpStatusCode.Created
+        ) {
+            assertEquals("saul@bettercall.com", email)
+            assertFalse(isRed)
         }
-
-        post("/api/users") {
-            contentType(ContentType.Application.Json)
-            setBody(
-                UserRequest("saul@bettercall.com", "123456")
-            )
-        }.apply {
-            assertEquals(HttpStatusCode.Created, status)
-            val response = body<UserResponse>()
-            assertEquals("saul@bettercall.com", response.email)
-            assertFalse(response.isRed)
+        testEndpoint<UserRequest, UserResponseWithToken>(Method.PostJson, "/api/login",
+            reqBody = UserRequest("saul@bettercall.com", "123456")
+        ) {
+            assertFalse(isRed)
+            saulAccessToken = accessToken
+            saulRefreshToken = refreshToken
         }
-        post("/api/login") {
-            contentType(ContentType.Application.Json)
-            setBody(
-                UserRequest("saul@bettercall.com", "123456")
-            )
-        }.apply {
-            assertEquals(HttpStatusCode.OK, status)
-            val response = body<UserResponseWithToken>()
-            assertFalse(response.isRed)
-            saulAccessToken = response.accessToken
-            saulRefreshToken = response.refreshToken
-        }
-
 
         /* refresh tokens */
-        post("/api/chirps") {
-            contentType(ContentType.Application.Json)
-            bearerAuth(saulRefreshToken)
-            setBody(
-                ChirpRequest("Let’s just say I know a guy... who knows a guy... who knows another guy.")
-            )
-        }.apply {
-            assertEquals(HttpStatusCode.Unauthorized, status)
-        }
-        post("/api/chirps") {
-            contentType(ContentType.Application.Json)
-            bearerAuth(saulAccessToken)
-            setBody(
-                ChirpRequest("Let’s just say I know a guy... who knows a guy... who knows another guy.")
-            )
-        }.apply {
-            assertEquals(HttpStatusCode.Created, status)
-        }
+        testEndpoint<ChirpRequest, Unit>(Method.PostJson, "/api/chirps",
+            { bearerAuth(saulRefreshToken) },
+            ChirpRequest("Let’s just say I know a guy... who knows a guy... who knows another guy."),
+            responseCode = HttpStatusCode.Unauthorized
+        )
+        testEndpoint<ChirpRequest, Unit>(Method.PostJson, "/api/chirps",
+            { bearerAuth(saulAccessToken) },
+            ChirpRequest("Let’s just say I know a guy... who knows a guy... who knows another guy."),
+            responseCode = HttpStatusCode.Created
+        )
         lateinit var saulAccess2: String
-        post("/api/refresh") {
-            bearerAuth(saulRefreshToken)
-        }.apply {
-            assertEquals(HttpStatusCode.OK, status)
-            val response = body<RefreshResponse>()
-            saulAccess2 = response.token
+        testEndpoint<Unit, RefreshResponse>(Method.Post, "/api/refresh",
+            { bearerAuth(saulRefreshToken) }
+        ) {
+            saulAccess2 = token
         }
-        post("/api/chirps") {
-            contentType(ContentType.Application.Json)
-            bearerAuth(saulAccess2)
-            setBody(
-                ChirpRequest("I'm the guy who's gonna win you this case.")
-            )
-        }.apply {
-            assertEquals(HttpStatusCode.Created, status)
-        }
-        post("/api/revoke") {
-            bearerAuth(saulRefreshToken)
-        }.apply {
-            assertEquals(HttpStatusCode.NoContent, status)
-        }
-        post("/api/refresh") {
-            bearerAuth(saulRefreshToken)
-        }.apply {
-            assertEquals(HttpStatusCode.Unauthorized, status)
-        }
+        testEndpoint<ChirpRequest, Unit>(Method.PostJson, "/api/chirps",
+            { bearerAuth(saulAccess2) },
+            ChirpRequest("I'm the guy who's gonna win you this case."),
+            responseCode = HttpStatusCode.Created
+        )
+        testEndpoint<Unit, Unit>(Method.Post, "/api/revoke",
+            { bearerAuth(saulRefreshToken) },
+            responseCode = HttpStatusCode.NoContent
+        )
+        testEndpoint<Unit, Unit>(Method.Post, "/api/refresh",
+            { bearerAuth(saulRefreshToken) },
+            responseCode = HttpStatusCode.Unauthorized
+        )
     }
 
     @Test
     fun testModifyUser() = withServer {
-        post("/admin/reset").apply {
-            assertEquals(HttpStatusCode.OK, status)
-        }
-
-        post("/api/users") {
-            contentType(ContentType.Application.Json)
-            setBody(
-                UserRequest("saul@bettercall.com", "123456")
-            )
-        }.apply {
-            assertEquals(HttpStatusCode.Created, status)
-            val response = body<UserResponse>()
-            assertEquals("saul@bettercall.com", response.email)
-            assertFalse(response.isRed)
-        }
-        post("/api/login") {
-            contentType(ContentType.Application.Json)
-            setBody(
-                UserRequest("saul@bettercall.com", "123456")
-            )
-        }.apply {
-            assertEquals(HttpStatusCode.OK, status)
-        }
+        testEndpoint<Unit, Unit>(Method.Post, "/admin/reset")
 
         /* modify user */
-        post("/api/users") {
-            contentType(ContentType.Application.Json)
-            setBody(UserRequest("walt@breakingbad.com", "123456"))
-        }.apply {
-            assertEquals(HttpStatusCode.Created, status)
-            val response = body<UserResponse>()
-        }
+        testEndpoint<UserRequest, UserResponse>(Method.PostJson, "/api/users",
+            reqBody = UserRequest("walt@breakingbad.com", "123456"),
+            responseCode = HttpStatusCode.Created
+        )
         lateinit var waltToken: String
-        post("/api/login") {
-            contentType(ContentType.Application.Json)
-            setBody(UserRequest("walt@breakingbad.com", "123456"))
-        }.apply {
-            assertEquals(HttpStatusCode.OK, status)
-            val response = body<UserResponseWithToken>()
-            waltToken = response.accessToken
+        testEndpoint<UserRequest, UserResponseWithToken>(Method.PostJson, "/api/login",
+            reqBody = UserRequest("walt@breakingbad.com", "123456")
+        ) {
+            waltToken = accessToken
         }
-        put("/api/users") {
-            contentType(ContentType.Application.Json)
-            bearerAuth(waltToken)
-            setBody(UserRequest("walter@breakingbad.com", "losPollosHermanos"))
-        }.apply {
-            assertEquals(HttpStatusCode.OK, status)
-            val response = body<UserResponse>()
-            assertEquals("walter@breakingbad.com", response.email)
+        testEndpoint<UserRequest, UserResponse>(Method.PutJson, "/api/users",
+            { bearerAuth(waltToken) },
+            UserRequest("walter@breakingbad.com", "losPollosHermanos")
+        ) {
+            assertEquals("walter@breakingbad.com", email)
         }
-        put("/api/users") {
-            contentType(ContentType.Application.Json)
-            setBody(UserRequest("walter@breakingbad.com", "j3ssePinkM@nCantCook"))
-        }.apply {
-            assertEquals(HttpStatusCode.Unauthorized, status)
-        }
-        put("/api/users") {
-            contentType(ContentType.Application.Json)
-            bearerAuth("badToken")
-            setBody(UserRequest("walter@breakingbad.com", "j3ssePinkM@nCantCook"))
-        }.apply {
-            assertEquals(HttpStatusCode.Unauthorized, status)
-        }
+        testEndpoint<UserRequest, Unit>(Method.PutJson, "/api/users",
+            reqBody = UserRequest("walter@breakingbad.com", "j3ssePinkM@nCantCook"),
+            responseCode = HttpStatusCode.Unauthorized
+        )
+        testEndpoint<UserRequest, Unit>(Method.PutJson, "/api/users",
+            { bearerAuth("badToken") },
+            UserRequest("walter@breakingbad.com", "j3ssePinkM@nCantCook"),
+            responseCode = HttpStatusCode.Unauthorized
+        )
     }
 
     @Test
     fun testDeleteChirp() = withServer {
-        post("/admin/reset").apply {
-            assertEquals(HttpStatusCode.OK, status)
-        }
+        testEndpoint<Unit, Unit>(Method.Post, "/admin/reset")
 
-        post("/api/users") {
-            contentType(ContentType.Application.Json)
-            setBody(
-                UserRequest("saul@bettercall.com", "123456")
-            )
-        }.apply {
-            assertEquals(HttpStatusCode.Created, status)
-            val response = body<UserResponse>()
-            assertEquals("saul@bettercall.com", response.email)
-            assertFalse(response.isRed)
+        testEndpoint<UserRequest, UserResponse>(Method.PostJson, "/api/users",
+            reqBody = UserRequest("saul@bettercall.com", "123456"),
+            responseCode = HttpStatusCode.Created
+        ) {
+            assertEquals("saul@bettercall.com", email)
         }
         lateinit var saulAccessToken: String
-        post("/api/login") {
-            contentType(ContentType.Application.Json)
-            setBody(
-                UserRequest("saul@bettercall.com", "123456")
-            )
-        }.apply {
-            assertEquals(HttpStatusCode.OK, status)
-            val response = body<UserResponseWithToken>()
-            saulAccessToken = response.accessToken
+        testEndpoint<UserRequest, UserResponseWithToken>(Method.PostJson, "/api/login",
+            reqBody = UserRequest("saul@bettercall.com", "123456")
+        ) {
+            saulAccessToken = accessToken
         }
-        post("/api/users") {
-            contentType(ContentType.Application.Json)
-            setBody(UserRequest("walt@breakingbad.com", "123456"))
-        }.apply {
-            assertEquals(HttpStatusCode.Created, status)
+
+        testEndpoint<UserRequest, UserResponse>(Method.PostJson, "/api/users",
+            reqBody = UserRequest("walt@breakingbad.com", "123456"),
+            responseCode = HttpStatusCode.Created
+        ) {
+            assertEquals("walt@breakingbad.com", email)
         }
         lateinit var waltToken: String
-        post("/api/login") {
-            contentType(ContentType.Application.Json)
-            setBody(UserRequest("walt@breakingbad.com", "123456"))
-        }.apply {
-            assertEquals(HttpStatusCode.OK, status)
-            val response = body<UserResponseWithToken>()
-            waltToken = response.accessToken
+        testEndpoint<UserRequest, UserResponseWithToken>(Method.PostJson, "/api/login",
+            reqBody = UserRequest("walt@breakingbad.com", "123456")
+        ) {
+            waltToken = accessToken
         }
 
         /* delete chirp */
         lateinit var chirpId: UUID
-        post("/api/chirps") {
-            contentType(ContentType.Application.Json)
-            bearerAuth(waltToken)
-            setBody(
-                ChirpRequest("I did it for me. I liked it. I was good at it. And I was really... I was alive.")
-            )
-        }.apply {
-            assertEquals(HttpStatusCode.Created, status)
-            val response = body<ChirpResponse>()
-            chirpId = response.id
+        testEndpoint<ChirpRequest, ChirpResponse>(Method.PostJson, "/api/chirps",
+            { bearerAuth(waltToken) },
+            ChirpRequest(
+                "I did it for me. I liked it. I was good at it. And I was really... I was alive."
+            ),
+            responseCode = HttpStatusCode.Created
+        ) {
+            chirpId = id
         }
-        get("/api/chirps/${chirpId}").apply {
-            assertEquals(HttpStatusCode.OK, status)
-        }
-        delete("/api/chirps/${chirpId}").apply {
-            assertEquals(HttpStatusCode.Unauthorized, status)
-        }
-
-        delete("/api/chirps/${chirpId}") {
-            bearerAuth(saulAccessToken)
-        }.apply {
-            assertEquals(HttpStatusCode.Forbidden, status)
-        }
-        delete("/api/chirps/${chirpId}") {
-            bearerAuth(waltToken)
-        }.apply {
-            assertEquals(HttpStatusCode.NoContent, status)
-        }
-        get("/api/chirps/${chirpId}").apply {
-            assertEquals(HttpStatusCode.NotFound, status)
-        }
+        testEndpoint<Unit, Unit>(Method.GetJson, "/api/chirps/${chirpId}")
+        testEndpoint<Unit, Unit>(Method.Delete, "/api/chirps/${chirpId}",
+            responseCode = HttpStatusCode.Unauthorized
+        )
+        testEndpoint<Unit, Unit>(Method.Delete, "/api/chirps/${chirpId}",
+            { bearerAuth(saulAccessToken) },
+            responseCode = HttpStatusCode.Forbidden
+        )
+        testEndpoint<Unit, Unit>(Method.Delete, "/api/chirps/${chirpId}",
+            { bearerAuth(waltToken) },
+            responseCode = HttpStatusCode.NoContent
+        )
+        testEndpoint<Unit, Unit>(Method.GetJson, "/api/chirps/${chirpId}",
+            responseCode = HttpStatusCode.NotFound
+        )
     }
 
     @Test
-    fun testGetChrips1() = withServer { c ->
-        post("/admin/reset").apply {
-            assertEquals(HttpStatusCode.OK, status)
+    fun testGetChirps1() = withServer { c ->
+        testEndpoint<Unit, Unit>(Method.Post, "/admin/reset")
+
+        testEndpoint<UserRequest, UserResponse>(Method.PostJson, "/api/users",
+            reqBody = UserRequest("walt@breakingbad.com", "123456"),
+            responseCode = HttpStatusCode.Created
+        ) {
+            assertEquals("walt@breakingbad.com", email)
         }
 
-        post("/api/users") {
-            contentType(ContentType.Application.Json)
-            setBody(
-                UserRequest("saul@bettercall.com", "123456")
-            )
-        }.apply {
-            assertEquals(HttpStatusCode.Created, status)
-        }
-        post("/api/login") {
-            contentType(ContentType.Application.Json)
-            setBody(
-                UserRequest("saul@bettercall.com", "123456")
-            )
-        }.apply {
-            assertEquals(HttpStatusCode.OK, status)
-            val response = body<UserResponseWithToken>()
-        }
-        post("/api/users") {
-            contentType(ContentType.Application.Json)
-            setBody(UserRequest("walt@breakingbad.com", "123456"))
-        }.apply {
-            assertEquals(HttpStatusCode.Created, status)
-        }
         lateinit var waltToken: String
         lateinit var waltId: UUID
-        post("/api/login") {
-            contentType(ContentType.Application.Json)
-            setBody(UserRequest("walt@breakingbad.com", "123456"))
-        }.apply {
-            assertEquals(HttpStatusCode.OK, status)
-            val response = body<UserResponseWithToken>()
-            waltToken = response.accessToken
-            waltId = response.id
+        testEndpoint<UserRequest, UserResponseWithToken>(Method.PostJson, "/api/login",
+            reqBody = UserRequest("walt@breakingbad.com", "123456")
+        ) {
+            waltToken = accessToken
+            waltId = id
         }
 
-        post("/api/chirps") {
-            contentType(ContentType.Application.Json)
-            bearerAuth(waltToken)
-            setBody(
-                ChirpRequest("I'm the one who knocks!")
-            )
-        }.apply {
-            assertEquals(HttpStatusCode.Created, status)
-            val response = body<ChirpResponse>()
-            assertEquals("I'm the one who knocks!", response.body)
+        testEndpoint<ChirpRequest, ChirpResponse>(Method.PostJson, "/api/chirps",
+            { bearerAuth(waltToken) }, ChirpRequest("I'm the one who knocks!"),
+            responseCode = HttpStatusCode.Created
+        ) {
+            assertEquals("I'm the one who knocks!", body)
         }
-        post("/api/chirps") {
-            contentType(ContentType.Application.Json)
-            bearerAuth(waltToken)
-            setBody(
-                ChirpRequest("Gale!")
-            )
-        }.apply {
-            assertEquals(HttpStatusCode.Created, status)
-            val response = body<ChirpResponse>()
-            assertEquals("Gale!", response.body)
+        testEndpoint<ChirpRequest, ChirpResponse>(Method.PostJson, "/api/chirps",
+            { bearerAuth(waltToken) }, ChirpRequest("Gale!"),
+            responseCode = HttpStatusCode.Created
+        ) {
+            assertEquals("Gale!", body)
         }
         lateinit var skylerId: UUID
-        post("/api/users") {
-            contentType(ContentType.Application.Json)
-            setBody(UserRequest("skyler@breakingbad.com", "000111"))
-        }.apply {
-            assertEquals(HttpStatusCode.Created, status)
-            val response = body<UserResponse>()
-            skylerId = response.id!!
+        testEndpoint<UserRequest, UserResponse>(Method.PostJson, "/api/users",
+            reqBody = UserRequest("skyler@breakingbad.com", "000111"),
+            responseCode = HttpStatusCode.Created
+        ) {
+            skylerId = id!!
         }
         lateinit var skylerAccess: String
-        post("/api/login") {
-            contentType(ContentType.Application.Json)
-            setBody(UserRequest("skyler@breakingbad.com", "000111"))
-        }.apply {
-            assertEquals(HttpStatusCode.OK, status)
-            val response = body<UserResponseWithToken>()
-            skylerAccess = response.accessToken
+
+        testEndpoint<UserRequest, UserResponseWithToken>(Method.PostJson, "/api/login",
+            reqBody = UserRequest("skyler@breakingbad.com", "000111"),
+        ) {
+            skylerAccess = accessToken
         }
-        post("/api/chirps") {
-            contentType(ContentType.Application.Json)
-            bearerAuth(skylerAccess)
-            setBody(
-                ChirpRequest("Mr President....")
-            )
-        }.apply {
-            assertEquals(HttpStatusCode.Created, status)
-            val response = body<ChirpResponse>()
-            assertEquals("Mr President....", response.body)
+
+        testEndpoint<ChirpRequest, ChirpResponse>(Method.PostJson, "/api/chirps",
+            { bearerAuth(skylerAccess) }, ChirpRequest("Mr President...."),
+            responseCode = HttpStatusCode.Created
+        ) {
+            assertEquals("Mr President....", body)
         }
-        get("/api/chirps?author_id=${waltId}").apply {
-            assertEquals(HttpStatusCode.OK, status)
-            val bodies = body<List<ChirpResponse>>().map { it.body }
+        testEndpoint<Unit, List<ChirpResponse>>(Method.GetJson, "/api/chirps?author_id=${waltId}") {
+            val bodies = map { it.body }
             assertTrue("I'm the one who knocks!" in bodies)
             assertTrue("Gale!" in bodies)
             assertTrue("Mr President...." !in bodies)
         }
-        get("/api/chirps?author_id=${skylerId}").apply {
-            assertEquals(HttpStatusCode.OK, status)
-            val bodies = body<List<ChirpResponse>>().map { it.body }
+        testEndpoint<Unit, List<ChirpResponse>>(Method.GetJson, "/api/chirps?author_id=${skylerId}") {
+            val bodies = map { it.body }
             assertTrue("Mr President...." in bodies)
             assertTrue("I'm the one who knocks!" !in bodies)
             assertTrue("Gale!" !in bodies)
@@ -434,94 +282,49 @@ class ApplicationTest {
 
     @Test
     fun testGetChirps2() = withServer {
-        post("/admin/reset").apply {
-            assertEquals(HttpStatusCode.OK, status)
+        testEndpoint<Unit, Unit>(Method.Post, "/admin/reset")
+
+        testEndpoint<UserRequest, UserResponse>(Method.PostJson, "/api/users",
+            reqBody = UserRequest("walt@breakingbad.com", "123456"),
+            responseCode = HttpStatusCode.Created
+        ) {
+            assertEquals("walt@breakingbad.com", email)
         }
 
-        post("/api/users") {
-            contentType(ContentType.Application.Json)
-            setBody(
-                UserRequest("saul@bettercall.com", "123456")
-            )
-        }.apply {
-            assertEquals(HttpStatusCode.Created, status)
-        }
-        lateinit var saulAccessToken: String
-        post("/api/login") {
-            contentType(ContentType.Application.Json)
-            setBody(
-                UserRequest("saul@bettercall.com", "123456")
-            )
-        }.apply {
-            assertEquals(HttpStatusCode.OK, status)
-            val response = body<UserResponseWithToken>()
-            saulAccessToken = response.accessToken
-        }
-        post("/api/users") {
-            contentType(ContentType.Application.Json)
-            setBody(UserRequest("walt@breakingbad.com", "123456"))
-        }.apply {
-            assertEquals(HttpStatusCode.Created, status)
-        }
         lateinit var waltToken: String
-        lateinit var waltId: UUID
-        post("/api/login") {
-            contentType(ContentType.Application.Json)
-            setBody(UserRequest("walt@breakingbad.com", "123456"))
-        }.apply {
-            assertEquals(HttpStatusCode.OK, status)
-            val response = body<UserResponseWithToken>()
-            waltToken = response.accessToken
-            waltId = response.id
+        testEndpoint<UserRequest, UserResponseWithToken>(Method.PostJson, "/api/login",
+            reqBody = UserRequest("walt@breakingbad.com", "123456")
+        ) {
+            waltToken = accessToken
         }
 
-        post("/api/chirps") {
-            contentType(ContentType.Application.Json)
-            bearerAuth(waltToken)
-            setBody(
-                ChirpRequest("I'm the one who knocks!")
-            )
-        }.apply {
-            assertEquals(HttpStatusCode.Created, status)
-            val response = body<ChirpResponse>()
-            assertEquals("I'm the one who knocks!", response.body)
+        testEndpoint<ChirpRequest, ChirpResponse>(Method.PostJson, "/api/chirps",
+            { bearerAuth(waltToken) }, ChirpRequest("I'm the one who knocks!"),
+            responseCode = HttpStatusCode.Created
+        ) {
+            assertEquals("I'm the one who knocks!", body)
         }
-        post("/api/chirps") {
-            contentType(ContentType.Application.Json)
-            bearerAuth(waltToken)
-            setBody(
-                ChirpRequest("Gale!")
-            )
-        }.apply {
-            assertEquals(HttpStatusCode.Created, status)
-            val response = body<ChirpResponse>()
-            assertEquals("Gale!", response.body)
+        testEndpoint<ChirpRequest, ChirpResponse>(Method.PostJson, "/api/chirps",
+            { bearerAuth(waltToken) }, ChirpRequest("Gale!"),
+            responseCode = HttpStatusCode.Created
+        ) {
+            assertEquals("Gale!", body)
         }
-        post("/api/chirps") {
-            contentType(ContentType.Application.Json)
-            bearerAuth(waltToken)
-            setBody(
-                ChirpRequest("Cmon Pinkman")
-            )
-        }.apply {
-            assertEquals(HttpStatusCode.Created, status)
-            val response = body<ChirpResponse>()
-            assertEquals("Cmon Pinkman", response.body)
+        testEndpoint<ChirpRequest, ChirpResponse>(Method.PostJson, "/api/chirps",
+            { bearerAuth(waltToken) }, ChirpRequest("Cmon Pinkman"),
+            responseCode = HttpStatusCode.Created
+        ) {
+            assertEquals("Cmon Pinkman", body)
         }
-        post("/api/chirps") {
-            contentType(ContentType.Application.Json)
-            bearerAuth(waltToken)
-            setBody(
-                ChirpRequest("Darn that fly, I just wanna cook")
-            )
-        }.apply {
-            assertEquals(HttpStatusCode.Created, status)
-            val response = body<ChirpResponse>()
-            assertEquals("Darn that fly, I just wanna cook", response.body)
+        testEndpoint<ChirpRequest, ChirpResponse>(Method.PostJson, "/api/chirps",
+            { bearerAuth(waltToken) }, ChirpRequest("Darn that fly, I just wanna cook"),
+            responseCode = HttpStatusCode.Created
+        ) {
+            assertEquals("Darn that fly, I just wanna cook", body)
         }
-        get("/api/chirps?sort=desc").apply {
-            assertEquals(HttpStatusCode.OK, status)
-            val bodies = body<List<ChirpResponse>>().map { it.body }
+
+        testEndpoint<Unit, List<ChirpResponse>>(Method.GetJson, "/api/chirps?sort=desc") {
+            val bodies = map { it.body }
             assertEquals(
                 listOf(
                     "Darn that fly, I just wanna cook",
@@ -531,9 +334,8 @@ class ApplicationTest {
                 ), bodies
             )
         }
-        get("/api/chirps?sort=asc").apply {
-            assertEquals(HttpStatusCode.OK, status)
-            val bodies = body<List<ChirpResponse>>().map { it.body }
+        testEndpoint<Unit, List<ChirpResponse>>(Method.GetJson, "/api/chirps?sort=asc") {
+            val bodies = map { it.body }
             assertEquals(
                 listOf(
                     "I'm the one who knocks!",
@@ -543,8 +345,5 @@ class ApplicationTest {
                 ), bodies
             )
         }
-
-
     }
-
 }
