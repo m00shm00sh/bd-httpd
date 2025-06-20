@@ -36,6 +36,9 @@ internal fun Application.configureRouting(
         exception<AuthenticationFailure> { call, cause ->
             call.respondText("401: $cause", status = HttpStatusCode.Unauthorized)
         }
+        exception<IllegalArgumentException> { call, cause ->
+            call.respondText("400: $cause", status = HttpStatusCode.BadRequest)
+        }
     }
     install(Resources)
 

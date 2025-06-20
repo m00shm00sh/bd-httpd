@@ -156,6 +156,41 @@ class ApplicationTest {
     }
 
     @Test
+    fun testValidateChirp() = withServer {
+        testEndpoint<Unit, Unit>(Method.Post, "/admin/reset")
+
+        testEndpoint<UserRequest, UserResponse>(Method.PostJson, "/api/users",
+            reqBody = UserRequest("saul@bettercall.com", "123456"),
+            responseCode = HttpStatusCode.Created
+        ) {
+            assertEquals("saul@bettercall.com", email)
+        }
+        lateinit var saulAccessToken: String
+        testEndpoint<UserRequest, UserResponseWithToken>(Method.PostJson, "/api/login",
+            reqBody = UserRequest("saul@bettercall.com", "123456")
+        ) {
+            saulAccessToken = accessToken
+        }
+
+        testEndpoint<ChirpRequest, Unit>(Method.PostJson, "/api/chirps",
+            { bearerAuth(saulAccessToken) },
+            ChirpRequest(
+                "lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum."
+            ),
+            responseCode = HttpStatusCode.BadRequest
+        )
+        testEndpoint<ChirpRequest, ChirpResponse>(Method.PostJson, "/api/chirps",
+            { bearerAuth(saulAccessToken) },
+            ChirpRequest(
+                "I really need a kerfuffle to go to bed sooner, Fornax !"
+            ),
+            responseCode = HttpStatusCode.Created
+        ) {
+            assertEquals("I really need a **** to go to bed sooner, **** !", body)
+        }
+    }
+
+    @Test
     fun testDeleteChirp() = withServer {
         testEndpoint<Unit, Unit>(Method.Post, "/admin/reset")
 

@@ -9,12 +9,19 @@ import java.util.UUID
 
 
 internal class ChirpService(private val db: Database) {
-    suspend fun createChirp(request: ChirpRequest, userId: UUID): ChirpResponse =
-        uuidGenerator.generate().let { chirpId ->
+    suspend fun createChirp(request: ChirpRequest, userId: UUID): ChirpResponse {
+        if (request.body.length > 140)
+            throw IllegalArgumentException("Chirp is too long")
+        val cleanBody = request.body.splitToSequence(" ").map {
+            if (it.lowercase() in profane)
+               "****"
+            else it
+        }.joinToString(" ")
+        return uuidGenerator.generate().let { chirpId ->
             db.op {
                 withDsl {
                     insertInto(CHIRPS, CHIRPS.ID, CHIRPS.BODY, CHIRPS.USER_ID)
-                        .values(chirpId, request.body, userId)
+                        .values(chirpId, cleanBody, userId)
                         .returningResult(CHIRPS.CREATED_AT, CHIRPS.UPDATED_AT)
                 }.suspendedBlockingFetch {
                     fetchSingle().let { (created, updated) ->
@@ -22,11 +29,12 @@ internal class ChirpService(private val db: Database) {
                         checkNotNull(updated)
                         val created = created.toKotlinInstant()
                         val updated = updated.toKotlinInstant()
-                        ChirpResponse(chirpId, created, updated, request.body, userId)
+                        ChirpResponse(chirpId, created, updated, cleanBody, userId)
                     }
                 }
             }
         }
+    }
 
     suspend fun getChirps(userId: UUID? = null): List<ChirpResponse> =
         db.op {
@@ -93,4 +101,8 @@ internal class ChirpService(private val db: Database) {
                 return@suspendedBlockingIO execute() == 1
             }
         }
+
+    companion object {
+        val profane = setOf("kerfuffle", "sharbert", "fornax")
+    }
 }
