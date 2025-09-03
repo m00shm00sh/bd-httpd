@@ -1,0 +1,26 @@
+[[source]]
+url = "https://pypi.org/simple"
+verify_ssl = true
+name = "pypi"
+
+[packages]
+sqlacodegen = "*"
+setuptools = "*"
+uvicorn = "*"
+pyjwt = "*"
+passlib = {extras = ["bcrypt"], version = "*"}
+alembic = "*"
+sqlalchemy = {extras = ["asyncio"], version = "*"}
+uuid-utils = "*"
+python-dotenv = "*"
+atomics = "*"
+pydantic-settings = "*"
+fastapi = {extras = ["standard"], version = "*"}
+aiosqlite = "*"
+pylint = "*"
+
+[dev-packages]
+
+[requires]
+python_version = "3.13"
+python_full_version = "3.13.4"
