@@ -14,5 +14,6 @@ internal data class ChirpResponse(
     val updated: Instant,
     val body: String,
     @Serializable(with = UUIDSerializer::class)
+    @SerialName("user_id")
     val userId: UUID,
 )
