@@ -40,10 +40,9 @@ internal class ChirpRoute(
 internal fun Route.chirpRoutes(chirpService: ChirpService, tokenService: JwtService) {
     authenticate("access") {
         // create chirp
-        post<ChirpRoute, ChirpRequest, ChirpResponse> { _, req ->
+        post<ChirpRoute, ChirpRequest, ChirpResponse>(HttpStatusCode.Created) { _, req ->
             val user = JwtService.getUser(call)
             checkNotNull(user)
-            call.response.status(HttpStatusCode.Created)
             chirpService.createChirp(req, user)
         }
     }
@@ -71,13 +70,12 @@ internal fun Route.chirpRoutes(chirpService: ChirpService, tokenService: JwtServ
 
     authenticate("access") {
         // delete one chirp
-        delete<ChirpRoute.ById, _> { res ->
+        delete<ChirpRoute.ById, Unit>(HttpStatusCode.NoContent) { res ->
             val user = JwtService.getUser(call)
             val chirp = getChirpByIdOrThrow404(res.id)
             if (chirp.userId != user)
                 throw UnsupportedOperationException("can't delete someone else's chirp")
             chirpService.deleteChirp(chirp.id)
-            return@delete HttpStatusCode.NoContent
         }
     }
 

@@ -19,9 +19,8 @@ internal class LoginRoute
 
 internal fun Route.userRoutes(userService: UserService, refreshService: RefreshService, tokenService: JwtService) {
     // create user
-    post<UserRoute, UserRequest, UserResponse> { _, req ->
+    post<UserRoute, UserRequest, UserResponse>(HttpStatusCode.Created) { _, req ->
         val result = userService.createUser(req.toUserEntry())
-        call.response.status(HttpStatusCode.Created)
         result
     }
     // login user

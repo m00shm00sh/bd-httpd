@@ -6,13 +6,8 @@ import post
 import io.ktor.http.HttpMethod
 import io.ktor.http.HttpStatusCode
 import io.ktor.resources.Resource
-import io.ktor.server.application.Application
-import io.ktor.server.application.install
-import io.ktor.server.auth.Authentication
-import io.ktor.server.auth.AuthenticationConfig
-import io.ktor.server.auth.authenticate
-import io.ktor.server.auth.bearer
-import io.ktor.server.auth.principal
+import io.ktor.server.application.*
+import io.ktor.server.auth.*
 import io.ktor.server.resources.post
 import io.ktor.server.routing.Route
 import tokens.JwtService
@@ -46,11 +41,10 @@ internal fun Route.refreshRoutes(refreshService: RefreshService, tokenService: J
             RefreshResponse(accessToken)
         }
         // revoke
-        post<RevokeRoute, _> {
+        post<RevokeRoute, Unit>(HttpStatusCode.NoContent) {
             val token = call.principal<RefreshPrincipal>()?.token
                 ?: throw AuthenticationFailure("")
             refreshService.revokeToken(token)
-            return@post HttpStatusCode.NoContent
         }
     }
 }

@@ -21,7 +21,6 @@ private class ApikeyPrincipal(val key: String)
 
 // derived from https://github.com/LukasForst/ktor-plugins:apikey
 private class ApikeyAuthProvider(c: Config): AuthenticationProvider(c) {
-    private val header = "Authorization"
     private val scheme = "ApiKey"
     private val authenticateFn = c.authenticateFn
     private val challengeFn = c.challengeFn
@@ -87,12 +86,11 @@ internal fun AuthenticationConfig.configurePolkaAuth(polka: AppConfig.Polka) {
 
 internal fun Route.polkaWebhook(userService: UserService) {
     authenticate("ApiKey") {
-        post<PolkaRoute.Webhooks, PolkaRequest, _> { _, req ->
+        post<PolkaRoute.Webhooks, PolkaRequest, Unit>(HttpStatusCode.NoContent) { _, req ->
             if (req.event == "user.upgraded" &&
                 !userService.upgradeUser(req.data.userId)
             )
                 throw NoSuchElementException()
-            return@post HttpStatusCode.NoContent
         }
     }
 }
