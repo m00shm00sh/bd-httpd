@@ -1,10 +1,22 @@
 
 [versions]
 kotlin-version = "2.1.21"
+kx-datetime-version = "0.6.2"
 ktor-version = "3.1.3"
 logback-version = "1.5.18"
 
+flyway-version = "11.9.1"
+jooq-version = "3.20.5"
+hikaricp-version = "6.3.0"
+sqlite-version = "3.50.1.0"
+
+hoplite-version = "2.9.0"
+bcrypt-version = "0.10.2"
+uuidgen-version = "5.1.0"
+
+
 [libraries]
+kx-datetime = { module = "org.jetbrains.kotlinx:kotlinx-datetime", version.ref = "kx-datetime-version" }
 ktor-server-core = { module = "io.ktor:ktor-server-core", version.ref = "ktor-version" }
 ktor-server-resources = { module = "io.ktor:ktor-server-resources", version.ref = "ktor-version" }
 ktor-server-host-common = { module = "io.ktor:ktor-server-host-common", version.ref = "ktor-version" }
@@ -22,7 +34,35 @@ ktor-client-core = { module = "io.ktor:ktor-client-core", version.ref = "ktor-ve
 ktor-client-content-negotiation = { module = "io.ktor:ktor-client-content-negotiation", version.ref = "ktor-version" }
 kotlin-test-junit = { module = "org.jetbrains.kotlin:kotlin-test-junit", version.ref = "kotlin-version" }
 
+hoplite-core = { module = "com.sksamuel.hoplite:hoplite-core", version.ref = "hoplite-version" }
+hoplite-datetime = { module = "com.sksamuel.hoplite:hoplite-datetime", version.ref = "hoplite-version" }
+hoplite-hocon = { module = "com.sksamuel.hoplite:hoplite-hocon", version.ref = "hoplite-version" }
+
+flyway-core = { module = "org.flywaydb:flyway-core", version.ref = "flyway-version" }
+hikaricp = { module = "com.zaxxer:HikariCP", version.ref = "hikaricp-version" }
+jooq = { module = "org.jooq:jooq", version.ref = "jooq-version" }
+jooq-kotlin-coroutines = { module = "org.jooq:jooq-kotlin-coroutines", version.ref = "jooq-version" }
+sqlite = { module = "org.xerial:sqlite-jdbc", version.ref = "sqlite-version" }
+
+uuidgen = { module = "com.fasterxml.uuid:java-uuid-generator", version.ref = "uuidgen-version" }
+
+bcrypt = { module = "at.favre.lib:bcrypt", version.ref = "bcrypt-version" }
+
+[bundles]
+ktor-server = [ "ktor-server-core", "ktor-server-content-negotiation",
+    "ktor-serialization-kotlinx-json", "ktor-server-host-common", "ktor-server-status-pages",
+    "ktor-server-auth", "ktor-server-auth-jwt", "ktor-server-resources",
+    "ktor-server-netty", "ktor-server-config-yaml", "ktor-server-html-builder" ]
+
+ktor-client = [ "ktor-client-core", "ktor-client-content-negotiation", "ktor-serialization-kotlinx-json" ]
+
+hoplite = [ "hoplite-core", "hoplite-datetime", "hoplite-hocon" ]
+db-deps = ["flyway-core", "jooq", "hikaricp", "jooq-kotlin-coroutines", "sqlite" ]
+
 [plugins]
 kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin-version" }
 ktor = { id = "io.ktor.plugin", version.ref = "ktor-version" }
 kotlin-plugin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin-version" }
+
+flyway = { id = "org.flywaydb.flyway", version.ref = "flyway-version" }
+jooq-codegen = { id = "org.jooq.jooq-codegen-gradle", version.ref = "jooq-version" }
