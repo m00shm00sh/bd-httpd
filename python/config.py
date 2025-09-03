@@ -16,4 +16,3 @@ class Config(BaseSettings):
 @lru_cache
 def get_config():
     return Config()
-

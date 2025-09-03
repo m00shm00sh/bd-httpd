@@ -1,5 +1,3 @@
-from typing import Annotated
-
 from fastapi import APIRouter, HTTPException, Response
 from starlette.responses import HTMLResponse
 

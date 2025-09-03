@@ -3,7 +3,7 @@ from datetime import datetime
 from typing import Self
 from uuid import UUID
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
 class ChirpRequest(BaseModel):
     body: str

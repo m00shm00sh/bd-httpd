@@ -1,14 +1,15 @@
 from uuid import UUID
 
-from sqlalchemy import select, insert, update, delete
+from sqlalchemy import select, insert, delete
 from sqlalchemy.ext.asyncio import AsyncConnection
 
 from uuid_utils import uuid7
 
+from models import ChirpEntry, ChirpResponse
 from ._util import coerce_utc
 from .tables import Chirps
-from models import ChirpEntry, ChirpResponse
 
+# pylint: disable=redefined-builtin
 async def create_chirp(c: AsyncConnection, uid: UUID, ch: ChirpEntry) -> ChirpResponse:
     q = (insert(Chirps)
          .values({"id": uuid7(), "body": ch.body, "user_id": uid})
@@ -17,6 +18,7 @@ async def create_chirp(c: AsyncConnection, uid: UUID, ch: ChirpEntry) -> ChirpRe
     created = coerce_utc(created)
     return ChirpResponse(id=id, created_at=created, updated_at=created, body=ch.body, user_id=uid)
 
+# pylint: disable=redefined-builtin
 async def get_chirps(c: AsyncConnection, uid: UUID | None) -> list[ChirpResponse]:
     q = (select(Chirps.c['id', 'created_at', 'updated_at', 'body', 'user_id'])
          .where(Chirps.c.updated_at is not None))
@@ -28,6 +30,7 @@ async def get_chirps(c: AsyncConnection, uid: UUID | None) -> list[ChirpResponse
         for (id, ca, ua, b, uid) in rows
     ]
 
+# pylint: disable=redefined-builtin
 async def get_chirp_by_id(c: AsyncConnection, id: UUID) -> ChirpResponse | None:
     q = (select(Chirps.c['id', 'created_at', 'updated_at', 'body', 'user_id'])
          .where(Chirps.c.id == id))
@@ -39,6 +42,7 @@ async def get_chirp_by_id(c: AsyncConnection, id: UUID) -> ChirpResponse | None:
     ua = coerce_utc(ua)
     return ChirpResponse(id=id, created_at=ca, updated_at=ua, body=b, user_id=uid)
 
+# pylint: disable=redefined-builtin
 async def delete_chirp(c: AsyncConnection, id: UUID):
     q = (delete(Chirps).where(Chirps.c.id == id))
     await c.execute(q)

@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta, UTC
+from datetime import datetime, UTC
 from typing import Annotated, Callable
 from uuid import UUID
 
@@ -6,9 +6,9 @@ from fastapi import Depends, Header, HTTPException
 import jwt
 from jwt import InvalidTokenError
 
+from sql.user_queries import does_user_exist
 from .config import config_dep
 from .db import db_dep
-from sql.user_queries import does_user_exist
 
 def _auth_header(scheme: str):
     def do_get(authorization: Annotated[list[str] | None, Header()] = None) -> str:
@@ -45,10 +45,10 @@ async def _jwt_get_user(bearer: auth_bearer_dep, c: config_dep, db_conn: db_dep)
         username = payload.get("sub")
         if username is None:
             raise _401
-    except (InvalidTokenError, ValueError):
-        raise _401
+    except (InvalidTokenError, ValueError) as ex:
+        raise _401 from ex
     uuid = UUID(username)
-    if not (await does_user_exist(db_conn, uuid)):
+    if not await does_user_exist(db_conn, uuid):
         raise _401
     return uuid
 

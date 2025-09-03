@@ -56,4 +56,3 @@ END;
 """)
 
 triggers = (*_triggers,)
-

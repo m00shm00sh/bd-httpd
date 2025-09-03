@@ -29,4 +29,3 @@ async def login_user(u: UserRequest, db: db_dep, gen_jwt: auth_jwtcreate_dep) ->
     access = gen_jwt(u_resp.id)
     refresh = await create_refresh_token(db, u_resp.id)
     return UserResponseWithToken.from_response(u_resp, access, refresh)
-

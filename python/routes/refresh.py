@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, Path, Query
+from fastapi import APIRouter, HTTPException
 
 from deps import auth_bearer_dep, auth_jwtcreate_dep, db_dep
 from models import RefreshResponse

@@ -5,10 +5,11 @@ from sqlalchemy.ext.asyncio import AsyncConnection
 
 from uuid_utils import uuid7
 
+from models import UserEntry, UserResponse
 from ._util import coerce_utc
 from .tables import Users
-from models import UserEntry, UserResponse
 
+# pylint: disable=redefined-builtin
 async def create_user(c: AsyncConnection, u: UserEntry) -> UserResponse:
     q = (insert(Users)
          .values({"id": uuid7(), "email": u.email, "pass": u.password})
@@ -17,6 +18,7 @@ async def create_user(c: AsyncConnection, u: UserEntry) -> UserResponse:
     created = coerce_utc(created)
     return UserResponse(id=id, created_at=created, updated_at=created, email=u.email, is_chirpy_red=red)
 
+# pylint: disable=redefined-builtin
 async def get_user_by_email(c: AsyncConnection, email: str) -> tuple[UserEntry, UserResponse] | None:
     q = (select(Users.c['id', 'pass', 'created_at', 'updated_at', 'is_chirpy_red'])
          .where(Users.c.email == email))
@@ -32,6 +34,7 @@ async def does_user_exist(c: AsyncConnection, id: UUID) -> bool:
     q = (select(Users.c.id).where(Users.c.id == id))
     return (await c.execute(q)).one_or_none() is not None
 
+# pylint: disable=redefined-builtin
 async def update_user(c: AsyncConnection, id: UUID, u: UserEntry) -> UserResponse | None:
     q1 = (update(Users)
           .values({"email": u.email, "pass": u.password, "updated_at": None})
@@ -45,6 +48,7 @@ async def update_user(c: AsyncConnection, id: UUID, u: UserEntry) -> UserRespons
     updated = coerce_utc(updated)
     return UserResponse(id=id, created_at=created, updated_at=updated, email=u.email, is_chirpy_red=red)
 
+# pylint: disable=redefined-builtin
 async def upgrade_user_to_red(c: AsyncConnection, id: UUID) -> bool:
     q = (update(Users)
          .values(is_chirpy_red = True, updated_at = None)
@@ -54,4 +58,3 @@ async def upgrade_user_to_red(c: AsyncConnection, id: UUID) -> bool:
 async def delete_all_users(c: AsyncConnection):
     q = delete(Users)
     await c.execute(q)
-

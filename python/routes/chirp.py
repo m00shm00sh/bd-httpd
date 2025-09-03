@@ -1,7 +1,7 @@
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, HTTPException, Path, Response
+from fastapi import APIRouter, HTTPException, Path
 
 from deps import auth_jwtuser_dep, db_dep
 from models import ChirpRequest, ChirpEntry, ChirpResponse
@@ -45,4 +45,3 @@ async def delete_chirp(user: auth_jwtuser_dep, cid: UUID, db: db_dep):
     if c.user_id != user:
         raise HTTPException(403, 'cannot delete someone else\'s chirp')
     await queries.delete_chirp(db, cid)
-
