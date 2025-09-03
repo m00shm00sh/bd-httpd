@@ -27,7 +27,7 @@ class _ConnectionManager:
         if self._engine is None:
             raise RuntimeError("closed connection pool")
 
-conn_manager = _ConnectionManager(get_config().db_url, echo="debug")
+conn_manager = _ConnectionManager(get_config().db_url)
 
 async def get_db_conn():
     async with conn_manager.connect() as c:
