@@ -43,7 +43,7 @@ internal class RefreshService(private val db: Database) {
             }
         }
 
-    suspend fun revokeToken(refresh: String) =
+    suspend fun revokeToken(refresh: String): Unit =
         db.op {
             withDsl {
                 val exp = Clock.System.now()
