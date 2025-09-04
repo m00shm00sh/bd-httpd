@@ -38,13 +38,16 @@ internal class JwtService(private val config: AppConfig.Jwt) {
         return JWTPrincipal(credential.payload)
     }
 
+    // non-companion this so we can call it through DI proxy
+    fun getUser(call: ApplicationCall): UUID? =
+        call.principal<JWTPrincipal>()?.payload
+            ?.getClaim(CLAIM_USER)?.asString()
+            ?.let(UUID::fromString)
+
     companion object {
         private const val CLAIM_USER = "user"
 
-        fun getUser(call: ApplicationCall): UUID? =
-            call.principal<JWTPrincipal>()?.payload
-                ?.getClaim(CLAIM_USER)?.asString()
-                ?.let(UUID::fromString)
+
     }
 
 }

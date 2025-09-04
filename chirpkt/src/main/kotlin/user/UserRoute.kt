@@ -10,6 +10,8 @@ import io.ktor.http.HttpStatusCode
 import io.ktor.resources.Resource
 import io.ktor.server.auth.authenticate
 import io.ktor.server.routing.Route
+import org.koin.ktor.ext.inject
+import kotlin.getValue
 
 @Resource("users")
 internal class UserRoute
@@ -17,7 +19,11 @@ internal class UserRoute
 @Resource("login")
 internal class LoginRoute
 
-internal fun Route.userRoutes(userService: UserService, refreshService: RefreshService, tokenService: JwtService) {
+internal fun Route.userRoutes() {
+    val userService by inject<UserService>()
+    val refreshService by inject<RefreshService>()
+    val tokenService by inject<JwtService>()
+
     // create user
     post<UserRoute, UserRequest, UserResponse>(HttpStatusCode.Created) { _, req ->
         val result = userService.createUser(req.toUserEntry())
@@ -36,7 +42,7 @@ internal fun Route.userRoutes(userService: UserService, refreshService: RefreshS
     authenticate("access") {
         // update user
         put<UserRoute, UserRequest, UserResponse> { _, req ->
-            val user = JwtService.getUser(call) ?: throw AuthenticationFailure("")
+            val user = tokenService.getUser(call) ?: throw AuthenticationFailure("")
             val result = userService.updateUser(req.toUserEntry(), user)
                 ?: throw NoSuchElementException("no user")
             result.copy(id = user, email = req.email,)

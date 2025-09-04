@@ -30,10 +30,12 @@ dependencies {
     implementation(libs.bundles.hoplite)
     implementation(libs.bundles.ktor.server)
     implementation(libs.logback.classic)
+    implementation(libs.bundles.koin)
     testImplementation(libs.ktor.server.test.host)
     testImplementation(libs.bundles.ktor.client)
     testImplementation(libs.ktor.client.content.negotiation)
     testImplementation(libs.kotlin.test.junit)
+    testImplementation(libs.bundles.koin.test)
 }
 
 flyway {

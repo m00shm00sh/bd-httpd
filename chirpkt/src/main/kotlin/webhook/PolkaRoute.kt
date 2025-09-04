@@ -1,15 +1,15 @@
 package webhook
 
-import AuthenticationFailure
 import io.ktor.http.*
-import io.ktor.http.content.OutgoingContent
 import io.ktor.resources.Resource
 import io.ktor.server.application.*
 import io.ktor.server.auth.*
 import io.ktor.server.response.respond
 import io.ktor.server.routing.Route
+import org.koin.ktor.ext.inject
 import post
 import user.UserService
+import kotlin.getValue
 
 @Resource("polka")
 internal class PolkaRoute {
@@ -84,7 +84,9 @@ internal fun AuthenticationConfig.configurePolkaAuth(polka: AppConfig.Polka) {
     }
 }
 
-internal fun Route.polkaWebhook(userService: UserService) {
+internal fun Route.polkaWebhook() {
+    val userService by inject<UserService>()
+
     authenticate("ApiKey") {
         post<PolkaRoute.Webhooks, PolkaRequest, Unit>(HttpStatusCode.NoContent) { _, req ->
             if (req.event == "user.upgraded" &&

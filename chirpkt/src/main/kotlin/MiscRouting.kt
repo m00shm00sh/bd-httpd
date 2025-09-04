@@ -1,33 +1,14 @@
-import chirp.ChirpService
-import chirp.chirpRoutes
-import refresh.RefreshService
-import refresh.refreshRoutes
-import tokens.JwtService
 import user.UserService
-import user.userRoutes
-import webhook.polkaWebhook
 
-import io.ktor.http.*
 import io.ktor.resources.Resource
-import io.ktor.server.application.*
 import io.ktor.server.html.respondHtml
 import io.ktor.server.http.content.staticFileSystem
-import io.ktor.server.plugins.statuspages.StatusPages
-import io.ktor.server.request.*
-import io.ktor.server.response.*
 import io.ktor.server.resources.*
-import io.ktor.server.resources.handle
 import io.ktor.server.routing.Route
-import io.ktor.server.routing.RoutingContext
-import io.ktor.server.routing.get
-import io.ktor.server.routing.post
-import io.ktor.server.routing.route
-import io.ktor.server.routing.routing
-import kotlinx.html.body
-import kotlinx.html.h1
-import kotlinx.html.p
-import kotlinx.serialization.serializer
+import kotlinx.html.*
+import org.koin.ktor.ext.inject
 import java.util.concurrent.atomic.AtomicLong
+import kotlin.getValue
 
 @Resource("healthz")
 internal class Healthz
@@ -48,7 +29,9 @@ internal fun Route.miscApiRoutes() {
 
 private val hitCount = AtomicLong()
 
-internal fun Route.miscRoutes(isDev: Boolean, userService: UserService) {
+internal fun Route.miscRoutes(isDev: Boolean) {
+    val userService by inject<UserService>()
+
     get<Admin.Metrics> {
         call.respondHtml {
             body {

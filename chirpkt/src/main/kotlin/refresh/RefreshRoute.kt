@@ -3,14 +3,13 @@ package refresh
 import AuthenticationFailure
 import post
 
-import io.ktor.http.HttpMethod
 import io.ktor.http.HttpStatusCode
 import io.ktor.resources.Resource
-import io.ktor.server.application.*
 import io.ktor.server.auth.*
-import io.ktor.server.resources.post
 import io.ktor.server.routing.Route
+import org.koin.ktor.ext.inject
 import tokens.JwtService
+import kotlin.getValue
 
 @Resource("refresh")
 internal class RefreshRoute()
@@ -27,7 +26,10 @@ internal fun AuthenticationConfig.configureBearerRefresh() {
     }
 }
 
-internal fun Route.refreshRoutes(refreshService: RefreshService, tokenService: JwtService) {
+internal fun Route.refreshRoutes() {
+    val refreshService by inject<RefreshService>()
+    val tokenService by inject<JwtService>()
+
     authenticate("refresh-token") {
         // login via refresh
         post<RefreshRoute, RefreshResponse>{ _ ->
@@ -35,8 +37,7 @@ internal fun Route.refreshRoutes(refreshService: RefreshService, tokenService: J
                 ?: throw AuthenticationFailure("")
             // this is done here instead of in authentication handler to avoid needless GET in revoke
             val user = refreshService.getUserByRefresh(token)
-            if (user == null)
-                throw AuthenticationFailure("");
+                ?: throw AuthenticationFailure("")
             val accessToken = tokenService.createToken(user)
             RefreshResponse(accessToken)
         }

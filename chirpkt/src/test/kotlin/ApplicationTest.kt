@@ -7,6 +7,7 @@ import io.ktor.client.request.*
 import io.ktor.http.HttpStatusCode
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertTrue
+import org.koin.test.KoinTest
 import refresh.RefreshResponse
 import user.UserRequest
 import user.UserResponse
@@ -17,7 +18,7 @@ import java.util.UUID
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
-class ApplicationTest {
+class ApplicationTest : KoinTest {
 
     @Test
     fun testStaticAndMisc() = withServer {

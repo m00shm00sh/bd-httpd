@@ -1,8 +1,10 @@
 import io.ktor.server.application.*
 import io.ktor.server.netty.EngineMain
-import io.ktor.http.decodeURLQueryComponent
 
 import chirp.ChirpService
+import org.koin.dsl.module
+import org.koin.ktor.plugin.Koin
+import org.koin.logger.slf4jLogger
 import refresh.RefreshService
 import tokens.JwtService
 import user.UserService
@@ -15,23 +17,23 @@ fun Application.module() {
     val config = AppConfig.config(environment.config.asPropertyMap())
     val db = Database(config.db)
 
-    val userService = UserService(db)
-    val refreshService = RefreshService(db)
-    val jwtService = JwtService(config.jwt)
-    val chirpService = ChirpService(db)
-    doModule(config, userService, refreshService, jwtService, chirpService)
+    doModule(db, config)
 
 }
 
-internal fun Application.doModule(
-    config: AppConfig.App,
-    userService: UserService,
-    refreshService: RefreshService,
-    jwtService: JwtService,
-    chirpService: ChirpService,
-) {
+internal fun Application.doModule(db: Database, config: AppConfig.App) {
+    val module = module {
+        single { UserService(db) }
+        single { RefreshService(db) }
+        single { JwtService(config.jwt) }
+        single { ChirpService(db) }
+    }
+    install(Koin) {
+        slf4jLogger()
+        modules(module)
+    }
     configureSerialization()
-    configureSecurity(userService, jwtService, config.polka)
-    configureRouting(userService, refreshService, jwtService, chirpService, config.platform == "dev")
+    configureSecurity(config.polka)
+    configureRouting(config.platform == "dev")
 
 }
