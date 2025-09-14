@@ -16,12 +16,14 @@ internal suspend inline fun <reified ReqBody, reified RespBody> HttpClient.testE
     reqBody: ReqBody = Unit as ReqBody,
     responseCode: HttpStatusCode = HttpStatusCode.OK,
     message: String = "$method $endpoint",
+    acceptAdditional: List<ContentType> = emptyList(),
     crossinline testResponse: RespBody.() -> Unit = {},
 ) {
     val expandedMessage = message.replace("{}", "$method $endpoint")
 
     (method.method)(endpoint) {
         reqBuilder()
+        acceptAdditional.forEach { accept(it) }
         if (ReqBody::class != Unit::class)
             setBody(reqBody)
     }.apply {
