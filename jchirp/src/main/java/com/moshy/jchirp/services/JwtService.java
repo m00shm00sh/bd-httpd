@@ -24,7 +24,7 @@ public class JwtService {
 
     private final String issuer;
 
-    public JwtService(@Value("${jwt.secret}") String secret, @Value("${jwt.issuer}") String issuer) {
+    public JwtService(@Value("${jwt.secret:A}") String secret, @Value("${jwt.issuer:chirpy-springb}") String issuer) {
         this.issuer = issuer;
         this.secret = getSignKey(secret);
     }
