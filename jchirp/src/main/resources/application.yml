@@ -1,0 +1,22 @@
+server:
+  port: 8080
+  address: 127.0.0.1
+debug: true
+logging:
+  level:
+    org.springframework.security.web: DEBUG
+    org.hibernate:
+      SQL: DEBUG
+      type.descriptor.sql.BasicBinder: TRACE
+      orm.jdbc.bind: TRACE
+spring.datasource:
+  url: jdbc:sqlite:data/data.db
+  hikari.connectionInitSql: PRAGMA foreign_keys=1
+spring.jpa.database-platform: org.hibernate.community.dialect.SQLiteDialect
+hibernate:
+  check_nullability: true
+
+# jwt.secret: insert value here
+# jwt.issuer: insert value here
+isDev: true
+polka.key: f271c81ff7084ee5b99a5091b42d486e
