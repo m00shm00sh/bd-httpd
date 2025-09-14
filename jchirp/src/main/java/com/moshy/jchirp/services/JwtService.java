@@ -20,11 +20,14 @@ import java.util.UUID;
 
 @Component
 public class JwtService {
-    @Value("${jwt.secret}")
-    private String secret;
+    private final SecretKey secret;
 
-    @Value("${jwt.issuer}")
-    private String issuer;
+    private final String issuer;
+
+    public JwtService(@Value("${jwt.secret}") String secret, @Value("${jwt.issuer}") String issuer) {
+        this.issuer = issuer;
+        this.secret = getSignKey(secret);
+    }
 
     public String generateToken(UUID uid) {
         var now = Instant.now();
@@ -35,18 +38,20 @@ public class JwtService {
             .issuer(issuer)
             .issuedAt(Date.from(now))
             .expiration(Date.from(exp))
-            .signWith(getSignKey())
+            .signWith(secret)
             .compact();
     }
 
-    private Key getSignKey() {
-        byte[] bytes = secret.getBytes(StandardCharsets.UTF_8);
+    private SecretKey getSignKey(String fromConfig) {
+        if (fromConfig.length() < 32)
+            return Jwts.SIG.HS256.key().build();
+        byte[] bytes = fromConfig.getBytes(StandardCharsets.UTF_8);
         return Keys.hmacShaKeyFor(bytes);
     }
 
     private Claims extractClaims(String jwt) {
         return Jwts.parser()
-            .verifyWith((SecretKey) getSignKey())
+            .verifyWith(secret)
             .build()
             .parseSignedClaims(jwt)
             .getPayload();
