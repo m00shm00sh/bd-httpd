@@ -1,0 +1,31 @@
+{
+  "name": "expressts",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.ts",
+  "scripts": {
+    "start": "tsx src/index.ts",
+    "build": "tsc src/index.ts",
+    "db-schema": "npx drizzle-kit generate",
+    "db-migrate": "npx drizzle-kit migrate"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "module",
+  "devDependencies": {
+    "@types/express": "^5.0.3",
+    "@types/jsonwebtoken": "^9.0.10",
+    "@types/node": "^24.3.1",
+    "drizzle-kit": "^0.31.8",
+    "typescript": "^5.9.2"
+  },
+  "dependencies": {
+    "drizzle-orm": "^0.45.1",
+    "express": "^5.1.0",
+    "jsonwebtoken": "^9.0.3",
+    "postgres": "^3.4.8",
+    "tsx": "^4.20.5",
+    "zod": "^4.3.5"
+  }
+}
