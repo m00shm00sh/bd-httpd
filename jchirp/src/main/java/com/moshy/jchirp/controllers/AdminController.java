@@ -4,15 +4,16 @@ import com.moshy.jchirp.ApiConfig;
 import com.moshy.jchirp.repositories.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
 import org.springframework.security.access.AccessDeniedException;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.stereotype.Component;
+import org.springframework.web.servlet.function.*;
 
-@RestController
-@RequestMapping("/admin")
-public class AdminController {
+import static org.springframework.web.servlet.function.RouterFunctions.route;
+
+@Component
+class AdminController {
 
     private final UserRepository userRepo;
 
@@ -24,13 +25,25 @@ public class AdminController {
         userRepo = repo;
     }
 
-    @PostMapping("/reset")
     void reset() {
         if (!isDev) {
             throw new AccessDeniedException("forbidden on non-dev");
         }
         ApiConfig.fileserverHits.set(0);
         userRepo.deleteAll();
+    }
+}
+
+@Configuration
+class AdminRouting {
+    @Bean
+    public RouterFunction<ServerResponse> routeAdmin(AdminController ac) {
+        return route()
+            .POST("/admin/reset", (_req) -> {
+                ac.reset();
+                return ServerResponse.ok().body("");
+            })
+            .build();
     }
 }
 

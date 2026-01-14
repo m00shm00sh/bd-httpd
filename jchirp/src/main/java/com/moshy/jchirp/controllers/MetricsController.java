@@ -5,6 +5,7 @@ import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 
+// continue use of annotations so we can use thymeleaf template rending infra
 @Controller
 public class MetricsController {
 

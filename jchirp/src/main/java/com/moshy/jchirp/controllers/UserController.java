@@ -1,6 +1,7 @@
 package com.moshy.jchirp.controllers;
 
 import com.moshy.jchirp.entities.*;
+import com.moshy.jchirp.filters.GetAuthentication;
 import com.moshy.jchirp.repositories.RefreshRepository;
 import com.moshy.jchirp.requests.UserRequest;
 import com.moshy.jchirp.responses.UserResponse;
@@ -9,21 +10,26 @@ import com.moshy.jchirp.services.JwtService;
 import com.moshy.jchirp.services.UserService;
 import lombok.AllArgsConstructor;
 import org.apache.commons.codec.binary.Hex;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
+import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.servlet.function.*;
 
 import java.security.*;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.UUID;
 
+import static org.springframework.web.servlet.function.RouterFunctions.route;
+
 @AllArgsConstructor
-@RestController
-@RequestMapping("/api")
+@Component
 @Transactional
-public class UserController {
+class UserController {
 
     // the Service acts between Controller and Repository to encode/decode passwords
     private final UserService service;
@@ -32,9 +38,7 @@ public class UserController {
 
     private final JwtService jwt;
 
-    @PostMapping("/users")
-    @ResponseStatus(HttpStatus.CREATED)
-    UserResponse newUser(@RequestBody UserRequest newUser) {
+    UserResponse newUser(UserRequest newUser) {
         var u = new User();
         u.setEmail(newUser.email());
         u.setPassword(newUser.password());
@@ -50,8 +54,7 @@ public class UserController {
         return response;
     }
 
-    @PostMapping("/login")
-    UserWithRefreshToken loginUser(@RequestBody UserRequest login) {
+    UserWithRefreshToken loginUser(UserRequest login) {
         var u = service.findUserByEmail(login.email());
         var refreshToken = getRandomHexString(32*2);
         var refresh = new Refresh();
@@ -71,8 +74,7 @@ public class UserController {
     }
 
 
-    @PutMapping("/users")
-    UserResponse modifyUser(Authentication auth, @RequestBody UserRequest newDetails) {
+    UserResponse modifyUser(Authentication auth, UserRequest newDetails) {
         var u = service.findUserById(UUID.fromString(auth.getName()));
         u.setEmail(newDetails.email());
         u.setPassword(newDetails.password());
@@ -97,3 +99,27 @@ public class UserController {
     }
 }
 
+@Configuration
+class UserRoute {
+    @Bean
+    public RouterFunction<ServerResponse> routeUser(UserController uc) {
+        return route()
+                .POST("/api/users", (req) -> {
+                    final var uReq = req.body(UserRequest.class);
+                    final var response = uc.newUser(uReq);
+                    return ServerResponse.status(HttpStatus.CREATED).body(response);
+                })
+                .POST("/api/login", (req) -> {
+                    final var uReq = req.body(UserRequest.class);
+                    final var response = uc.loginUser(uReq);
+                    return ServerResponse.ok().body(response);
+                })
+                .PUT("/api/users", (req) -> {
+                    final var auth = GetAuthentication.getOrThrow();
+                    final var details = req.body(UserRequest.class);
+                    final var response = uc.modifyUser(auth, details);
+                    return ServerResponse.ok().body(response);
+                })
+            .build();
+    }
+}

@@ -1,38 +1,41 @@
 package com.moshy.jchirp.controllers;
 
 import com.moshy.jchirp.entities.*;
-import com.moshy.jchirp.exceptions.ChirpTooLongException;
-import com.moshy.jchirp.exceptions.ForbiddenOperationException;
-import com.moshy.jchirp.exceptions.NoSuchChirpException;
+import com.moshy.jchirp.exceptions.*;
+import com.moshy.jchirp.filters.GetAuthentication;
 import com.moshy.jchirp.repositories.ChirpRepository;
 import com.moshy.jchirp.repositories.UserRepository;
 import com.moshy.jchirp.requests.ChirpRequest;
 import com.moshy.jchirp.responses.ChirpResponse;
 
+import jakarta.annotation.Nullable;
 import lombok.AllArgsConstructor;
 
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
+import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.servlet.function.*;
 
 import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 
+import static org.springframework.web.servlet.function.RouterFunctions.route;
+
 @AllArgsConstructor
-@RestController
-@RequestMapping("/api")
-@Transactional
-public class ChirpController {
+@Component
+class ChirpController {
 
     private final UserRepository userRepo;
     private final ChirpRepository chirpRepo;
 
-    @PostMapping("/chirps")
-    @ResponseStatus(HttpStatus.CREATED)
-    ChirpResponse createChirp(Authentication auth, @RequestBody ChirpRequest req) {
+    @Transactional
+    ChirpResponse createChirp(Authentication auth, ChirpRequest req) {
         var uid = UUID.fromString(auth.getName());
         if (req.body().length() > 140)
             throw new ChirpTooLongException();
@@ -52,11 +55,7 @@ public class ChirpController {
         return resp;
     }
 
-    @GetMapping("/chirps")
-    List<ChirpResponse> getAllChirps(
-            @RequestParam(name = "author_id", required = false) UUID authorId,
-            @RequestParam(name = "sort", required = false) String sort
-    ) {
+    List<ChirpResponse> getAllChirps(@Nullable UUID authorId, @Nullable String sort) {
         var dbRows = (authorId != null)
                 ? chirpRepo.findByUserIdOrderByCreatedAt(authorId)
                 : chirpRepo.findByOrderByCreatedAt();
@@ -73,15 +72,12 @@ public class ChirpController {
         return "desc".equals(sort) ? rows.reversed() : rows;
     }
 
-    @GetMapping("/chirps/{cid}")
-    Chirp findChirpById(@PathVariable UUID cid) {
-        return chirpRepo.findById(cid)
-            .orElseThrow(NoSuchChirpException::new);
+    Chirp findChirpById(UUID cid) {
+        return chirpRepo.findById(cid).orElseThrow(NoSuchChirpException::new);
     }
 
-    @DeleteMapping("/chirps/{cid}")
-    @ResponseStatus(HttpStatus.NO_CONTENT)
-    void deleteChirp(Authentication auth, @PathVariable UUID cid) {
+    @Transactional
+    void deleteChirp(Authentication auth, UUID cid) {
         var uid = UUID.fromString(auth.getName());
         Chirp c = chirpRepo.findById(cid).orElseThrow(NoSuchChirpException::new);
         if (!c.getUser().getId().equals(uid))
@@ -101,3 +97,41 @@ public class ChirpController {
     }
 }
 
+@Configuration
+class ChirpRouter {
+    @Bean
+    public RouterFunction<ServerResponse> routeChirps(ChirpController cc) {
+        return route()
+                .POST("/api/chirps", (req) -> {
+                    final var auth = GetAuthentication.getOrThrow();
+                    final var chirpReq = req.body(ChirpRequest.class);
+                    final var response = cc.createChirp(auth, chirpReq);
+                    return ServerResponse.status(HttpStatus.CREATED).body(response);
+                })
+                .GET("/api/chirps", (req) -> {
+                    final var authorId = req.param("author_id")
+                            .map(UUID::fromString)
+                            .orElse(null);
+                    final var sort = req.param("sort").orElse(null);
+                    final var response = cc.getAllChirps(authorId, sort);
+                    return ServerResponse.ok().body(response);
+                })
+                .GET("/api/chirps/{cid}", (req) -> {
+                    final var cid = UUID.fromString(req.pathVariable("cid"));
+                    final var response = cc.findChirpById(cid);
+                    try {
+                        return ServerResponse.ok().body(response);
+                    } catch (NoSuchChirpException _404) {
+                        return ServerResponse.notFound().build();
+                    }
+                })
+                .DELETE("/api/chirps/{cid}", (req) -> {
+                    final var auth = GetAuthentication.getOrThrow();
+                    final var cid = UUID.fromString(req.pathVariable("cid"));
+                    cc.deleteChirp(auth, cid);
+                    return ServerResponse.status(HttpStatus.NO_CONTENT).build();
+                })
+            .build();
+    }
+
+}
