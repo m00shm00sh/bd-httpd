@@ -28,19 +28,8 @@ import com.moshy.jchirp.filters.RefreshTokenFilter;
 import lombok.AllArgsConstructor;
 
 
-@Configuration
-@EnableWebSecurity
-@AllArgsConstructor
-public class SecurityConfig {
-
-    private final JwtAuthFilter jwtFilter;
-    private final RefreshTokenFilter refreshFilter;
-    private final UserDetailsService userDetailsService;
-    private final PasswordConfig passwordConfig;
-    private final PolkaWebhookFilter polkaFilter;
-
-
-    private static void doSetupChain(
+abstract class SecurityConfigBase {
+    protected static void doSetupChain(
             HttpSecurity builder,
             String[] pathPatterns,
             Customizer<AuthorizeHttpRequestsConfigurer<HttpSecurity>.AuthorizationManagerRequestMatcherRegistry> authorizeHttpRequestsCustomizer,
@@ -56,18 +45,29 @@ public class SecurityConfig {
         if (authProvider != null)
             builder.authenticationProvider(authProvider);
         builder
-            .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS));
+                .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS));
         builder.authorizeHttpRequests(authorizeHttpRequestsCustomizer);
         builder.exceptionHandling(send401OnNoAuth);
     }
+
     private static final Customizer<ExceptionHandlingConfigurer<HttpSecurity>> send401OnNoAuth = e ->
             e.authenticationEntryPoint((req, res, ex) ->
                     res.sendError(HttpServletResponse.SC_UNAUTHORIZED, ex.getMessage())
             );
 
-    private static String[] paths(String ...args) {
+    protected static String[] paths(String... args) {
         return args;
     }
+}
+@Configuration
+@EnableWebSecurity
+@AllArgsConstructor
+class SecurityConfig extends SecurityConfigBase {
+    private final JwtAuthFilter jwtFilter;
+    private final RefreshTokenFilter refreshFilter;
+    private final UserDetailsService userDetailsService;
+    private final PasswordConfig passwordConfig;
+    private final PolkaWebhookFilter polkaFilter;
 
     @Bean
     public SecurityFilterChain filterChainNone(HttpSecurity http) throws Exception {
