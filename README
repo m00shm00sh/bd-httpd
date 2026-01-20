@@ -4,4 +4,4 @@ chirpkt - Kotlin, Ktor, Koin, Jooq, Jooq, Sqlite
 go - Go, stdlib net/http, Sqlc, Goose, Sqlite
 jchirp - Java, Lombok, Spring Boot (JPA, Security, Thymeleaf, Web), Hibernate, Flyway, Sqlite
 python - Python, Fastapi, Pydantic, Sqlalchemy, Alembic, Sqlite 
-
+aspnet - C# ASP.NET, Entity Framework, Razor Pages
