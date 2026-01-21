@@ -1,6 +1,3 @@
-
-using System.Security.Claims;
-
 namespace aspnet.Auth;
 
 internal class JwtAuthorizationEndpointFilter(ILogger<JwtAuthorizationEndpointFilter> logger) : IEndpointFilter
@@ -10,7 +7,7 @@ internal class JwtAuthorizationEndpointFilter(ILogger<JwtAuthorizationEndpointFi
         var httpContext = context.HttpContext;
 
         var sub = httpContext.User.GetSubjectId();
-        logger.LogWarning("JWT User: {0}", sub);
+        logger.LogDebug("JWT User: {0}", sub);
         if (sub == null)
             return Results.Unauthorized();
         return await next(context);

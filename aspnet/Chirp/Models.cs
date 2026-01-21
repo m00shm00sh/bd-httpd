@@ -2,9 +2,9 @@ namespace aspnet.Chirp;
 
 internal record Request(string Body)
 {
-    public Request WithCleanBody()
+    public Request WithCleanBody(int maxBodyLength)
     {
-        if (Body.Length > 140)
+        if (Body.Length > maxBodyLength)
             throw new ArgumentOutOfRangeException("Body", "too long");
         return new(
             Body.Split(" ")

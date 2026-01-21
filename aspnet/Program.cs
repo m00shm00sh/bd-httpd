@@ -1,5 +1,9 @@
 using System.IdentityModel.Tokens.Jwt;
 using System.Text.Json;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.OpenApi;
+using Microsoft.EntityFrameworkCore;
+
 using aspnet.Auth;
 using aspnet.Chirp;
 using aspnet.Db;
@@ -8,8 +12,6 @@ using aspnet.Refreshes;
 using aspnet.User;
 using aspnet.Util;
 using aspnet.Webhooks;
-using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
 

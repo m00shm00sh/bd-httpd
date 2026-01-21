@@ -62,16 +62,19 @@ internal record LoginResponse(
 
 internal static class LoginResponseExtensions
 {
-    public static LoginResponse ToLoginResponse(this Response r, string accessToken, string refreshToken)
+    extension(Response r)
     {
-        return new LoginResponse(
-            Id: r.Id,
-            CreatedAt: r.CreatedAt,
-            UpdatedAt: r.UpdatedAt,
-            Email: r.Email,
-            IsChirpyRed: r.IsChirpyRed,
-            AccessToken: accessToken,
-            RefreshToken: refreshToken
-        );
+        public LoginResponse ToLoginResponse(string accessToken, string refreshToken)
+        {
+            return new LoginResponse(
+                Id: r.Id,
+                CreatedAt: r.CreatedAt,
+                UpdatedAt: r.UpdatedAt,
+                Email: r.Email,
+                IsChirpyRed: r.IsChirpyRed,
+                AccessToken: accessToken,
+                RefreshToken: refreshToken
+            );
+        }
     }
 }
