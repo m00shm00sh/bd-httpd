@@ -60,6 +60,14 @@ internal static class RepositoryExtensions
             );
         }
 
+        public async Task<bool> IsUserRed(Guid id, CancellationToken ct)
+        {
+            var row = await ctx.Users.FindAsync(id, ct);
+            if (row is null)
+                return false;
+            return row.IsChirpyRed > 0;
+        }
+
         public async Task<bool> UpgradeUserToRed(Guid id, CancellationToken ct)
         {
             var row = await ctx.Users.FindAsync([id], ct);

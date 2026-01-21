@@ -24,9 +24,11 @@ internal static class RoutingExtensions
                         return TypedResults.Unauthorized();
                     }
 
+                    var isUserRed = await repo.IsUserRed(userId.Value, ct);
+
                     try
                     {
-                        var cleanChirp = req.WithCleanBody();
+                        var cleanChirp = req.WithCleanBody(isUserRed ? 200 : 140);
                         var response = await repo.CreateChirp(cleanChirp, userId.Value, ct);
                         return TypedResults.Created((Uri?)null, response);
                     }
