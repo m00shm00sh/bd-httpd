@@ -20,7 +20,15 @@ builder.Services.AddDbContext<BdChirpyContext>(options =>
         "DB_URL", "ConnectionStrings:DbUrl")
     )
 );
-builder.Services.AddOpenApi();
+builder.Services.AddOpenApi(options =>
+    options.CreateSchemaReferenceId = t =>
+    {
+        var fn = t.Type.FullName;
+        if (fn?.StartsWith("aspnet.") == true)
+            return fn.Substring("aspnet.".Length);
+        return OpenApiOptions.CreateDefaultSchemaReferenceId(t);
+    }
+);
 builder.Services.AddScoped<TokenService>();
 JwtSecurityTokenHandler.DefaultMapInboundClaims = false;
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
