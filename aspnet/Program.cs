@@ -24,9 +24,9 @@ builder.Services.AddOpenApi(options =>
     options.CreateSchemaReferenceId = t =>
     {
         var fn = t.Type.FullName;
-        if (fn?.StartsWith("aspnet.") == true)
-            return fn.Substring("aspnet.".Length);
-        return OpenApiOptions.CreateDefaultSchemaReferenceId(t);
+        return fn?.StartsWith("aspnet.") == true
+            ? fn["aspnet.".Length..]
+            : OpenApiOptions.CreateDefaultSchemaReferenceId(t);
     }
 );
 builder.Services.AddScoped<TokenService>();
