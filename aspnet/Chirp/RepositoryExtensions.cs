@@ -34,18 +34,16 @@ internal static class RepositoryExtensions
             if (userId.HasValue)
                 q = q.Where(x => x.UserId == userId.Value);
             q = !reverseOrder ? q.OrderBy(e => e.CreatedAt) : q.OrderByDescending(e => e.CreatedAt);
-            var list = new List<Response>();
-            // the monstrosity in the foreach is taken from EF's IQueryable<TSource>.ToListAsync(ct)
-            await foreach (var chirp in q.AsAsyncEnumerable().WithCancellation(ct).ConfigureAwait(false))
-            {
-                list.Add(new Response(
+             
+            var list = await q.AsAsyncEnumerable()
+                .Select(chirp => new Response(
                     Id: chirp.Id,
                     CreatedAt: new DateTimeOffset(chirp.CreatedAt),
                     UpdatedAt: new DateTimeOffset(chirp.UpdatedAt),
                     Body: chirp.Body,
                     UserId: chirp.UserId
-                ));
-            }
+                ))
+                .ToListAsync(ct);
             return list;
         }
 
